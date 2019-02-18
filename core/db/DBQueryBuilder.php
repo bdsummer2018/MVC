@@ -7,11 +7,11 @@
  */
 
 namespace core\db;
-use core\Configurator;
+
 
 class DBQueryBuilder
 {
-    private $dbh;
+
 
     private $quury_parts = [
         "where" => [],
@@ -24,18 +24,22 @@ class DBQueryBuilder
         "fields" => [],
         "table" => null
     ];
+    private $executor;
+    private $class;
+    const DEF_CONFIG_NAME = "default";
 
-    /**
-     * DBQueryBuilder constructor.
-     */
-    public function __construct($name = "default")
+
+    public function __construct($name = self::DEF_CONFIG_NAME,$class=null)
     {
-        $config = new Configurator("db");
-        $cfg = $config->$name;
-
-        $this->dbh = new \PDO("mysql:host={$cfg["host"]};port={$cfg["port"]};dbname={$cfg["name"]};charset={$cfg["charset"]}",
-            $cfg["user"],$cfg["pass"]);
+        $this->class=$class;
+        $this->executor = DBExecutor::instance($name);
     }
+
+    public static function create($name = self::DEF_CONFIG_NAME,$class=null){
+        return new self($name,$class);
+    }
+
+
 
     //SELECT vasia.dsf FROM ... WHERE ... ORDER BY ... LIMIT ... OFFSET ...
 
@@ -63,7 +67,7 @@ class DBQueryBuilder
             $sign = "=";
         }
         if(!$native) $field = self::_field($field);
-        if(!$native && $value[0]!="?" && $value[0]!=":" && !is_integer($value)) $value=$this->dbh->quote($value);
+        if(!$native && $value[0]!="?" && $value[0]!=":" && !is_integer($value)) $value=$this->executor->quote($value);
         $this->quury_parts["where"][] = [$type,$field,$sign,$value];
     }
 
@@ -96,11 +100,8 @@ class DBQueryBuilder
         return $this->_groupWhere($where,"OR");
     }
 
-    private function buildSelect(){
-        $fields = empty($this->quury_parts["fields"])?"*":implode(", ",$this->quury_parts["fields"]);
-
-        $q = "SELECT {$fields} FROM {$this->quury_parts["table"]}";
-
+    private function buildWhere(){
+        $q="";
         if(!empty($this->quury_parts["where"])){
             $q.=" WHERE";
             foreach ($this->quury_parts["where"] as $w){
@@ -109,16 +110,54 @@ class DBQueryBuilder
             }
         }
         return $q;
+    }
+
+    private function buildSelect(){
+        $fields = empty($this->quury_parts["fields"])?"*":implode(", ",$this->quury_parts["fields"]);
+
+        $q = "SELECT {$fields} FROM {$this->quury_parts["table"]}";
+        $q.=$this->buildWhere();
+        return $q;
 
     }
 
     public function all($data=[]){
-        $q = $this->buildSelect();
-        $stmt= $this->dbh->prepare($q);
-        $stmt->execute($data);
-        return $stmt->fetchAll(\PDO::FETCH_ASSOC);
+        return $this->executor->executeSelect($this->buildSelect(),$data);
+    }
+    public function get($data=[]){
+        return array_map(function ($x){
+            return new $this->class($x);
+        },$this->all($data));
     }
 
+    public function one($data=[]){
+        return $this->executor->executeSelectOne($this->buildSelect(),$data);
+    }
+    public function first($data=[]){
+        $q = $this->one($data);
+        return $q ? new $this->class($q) : null;
+    }
 
+    public function insert($table,array $data){
+        $fields = implode("`,`",array_keys($data));
+        $values = implode(", :",array_keys($data));
+        $q ="INSERT INTO `{$table}` (`{$fields}`) VALUES (:{$values})";
+        return $this->executor->executeInsert($q,$data);
+    }
+
+    public function update($table,array $data,array $params=[]){
+        $where = $this->buildWhere();
+        $list = implode(",",array_map(function ($f){
+            return "`{$f}`=:_param_$f";
+        },array_keys($data)));
+
+        $insert_data=[];
+        foreach ($data as $k=>$v){
+            $insert_data["_param_{$k}"]=$v;
+        }
+        $q = "UPDATE {$table} SET {$list} {$where}";
+
+        $this->executor->executeUpdate($q,array_merge($insert_data,$params));
+    }
 
 }
