@@ -12,6 +12,6 @@ return [
             "controller"=>"api",
             "action"=>"todo"
         ]),
-
+        new Route("{controller}/{action}")
     ]
 ];
