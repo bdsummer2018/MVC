@@ -15,6 +15,10 @@ abstract class Model
 {
     protected static $table;
 
+    protected function getIdName(){
+        return "id";
+    }
+
     /**
      * Model constructor.
      */
@@ -51,6 +55,7 @@ abstract class Model
 
 
     public function save(){
+        $idname = $this->getIdName();
         $filds = $this->parseFields();
         $data = [];
         foreach ($filds as $fild){
@@ -59,13 +64,14 @@ abstract class Model
         }
         $class = get_class($this);
 
-        if(is_null($this->id)){
+
+        if(is_null($this->$idname)){
             $id =  DBQueryBuilder::create(DBQueryBuilder::DEF_CONFIG_NAME,$class)->insert($class::$table,$data);
-            $this->id = $id;
+            $this->$idname = $id;
         }else{
             DBQueryBuilder::create(DBQueryBuilder::DEF_CONFIG_NAME,$class)
-                ->where("id",":id")
-                ->update($class::$table,$data,["id"=>$this->id]);
+                ->where($idname,":id")
+                ->update($class::$table,$data,["id"=>$this->$idname]);
         }
 
 

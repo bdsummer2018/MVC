@@ -8,10 +8,30 @@ return [
             "controller" => "main",
             "action" => "index"
         ]),
-        new Route("todo/{x}",[
-            "controller"=>"api",
-            "action"=>"todo"
+        new Route("departs", [
+            "controller" => "main",
+            "action" => "departs"
         ]),
-        new Route("{controller}/{action}")
+
+
+        new Route("api/departs", [
+            "controller" => "api",
+            "action" => "getRootDeparts"
+        ]),
+
+        new Route("api/departs/add", [
+            "controller" => "api",
+            "action" => "addDeparts"
+        ]),
+
+        new Route("api/departs/{id}", [
+            "controller" => "api",
+            "action" => "getChildDeparts"
+        ]),
+
+
+
+
+
     ]
 ];

@@ -1,7 +1,7 @@
 <?php
 return [
     "default"=>[
-        "name"=>"films",
+        "name"=>"accesssystem",
         "user"=>"root",
         "pass"=>"",
         "host"=>"127.0.0.1",

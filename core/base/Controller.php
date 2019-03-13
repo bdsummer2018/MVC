@@ -14,6 +14,17 @@ use core\router\Route;
 abstract class Controller
 {
     private $route;
+    private $request;
+
+    public function __construct()
+    {
+        $this->request = new Request();
+    }
+
+    protected function request(){
+        return $this->request;
+    }
+
     public function execAction(string $action){
         $data = $this->$action();
 
